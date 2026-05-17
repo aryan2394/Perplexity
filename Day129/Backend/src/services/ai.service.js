@@ -27,7 +27,7 @@ const searchInternetTool = tool(
 
 const agent = createAgent({
     model: geminiModel,
-    tools: [ searchInternetTool ],
+    tools: [searchInternetTool],
 })
 
 export async function generateResponse(messages) {
@@ -48,10 +48,10 @@ export async function generateResponse(messages) {
                 } else if (msg.role == "ai") {
                     return new AIMessage(msg.content)
                 }
-            })) ]
+            }))]
     });
 
-    const finalMessage = response.messages[ response.messages.length - 1 ];
+    const finalMessage = response.messages[response.messages.length - 1];
     return finalMessage.content || finalMessage.text;
 }
 
