@@ -1,0 +1,13 @@
+{
+  "name": "perplexity-clone-fullstack",
+  "version": "1.0.0",
+  "description": "Full-stack Perplexity clone for single URL Render deployment",
+  "scripts": {
+    "install:all": "npm install --prefix Frontend && npm install --prefix Backend",
+    "build:frontend": "npm run build --prefix Frontend",
+    "build": "npm run install:all && npm run build:frontend",
+    "start": "npm run start --prefix Backend",
+    "dev:frontend": "npm run dev --prefix Frontend",
+    "dev:backend": "npm run dev --prefix Backend"
+  }
+}
