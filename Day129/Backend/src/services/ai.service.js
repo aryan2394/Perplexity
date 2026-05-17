@@ -26,7 +26,7 @@ const searchInternetTool = tool(
 )
 
 const agent = createAgent({
-    model: mistralModel,
+    model: geminiModel,
     tools: [ searchInternetTool ],
 })
 
@@ -57,7 +57,7 @@ export async function generateResponse(messages) {
 
 export async function generateChatTitle(message) {
 
-    const response = await mistralModel.invoke([
+    const response = await geminiModel.invoke([
         new SystemMessage(`
             You are a helpful assistant that generates concise and descriptive titles for chat conversations.
             
