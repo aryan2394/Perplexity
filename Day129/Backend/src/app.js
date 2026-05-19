@@ -18,11 +18,16 @@ app.use(morgan("dev"));
 app.use(cors({
     origin: clientUrl,
     credentials: true,
-    methods: [ "GET", "POST", "PUT", "DELETE" ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
 }))
 
 // Serve static assets from public folder (build output of frontend)
 app.use(express.static(path.resolve("public")));
+
+// Keep-alive endpoint for UptimeRobot
+app.get("/ping", (req, res) => {
+    res.status(200).send("pong");
+});
 
 // Health check endpoint (useful for Render deployment verification)
 app.get("/api/health", (req, res) => {
