@@ -37,6 +37,9 @@ const Register = () => {
               <p className="text-zinc-200 text-lg">
                 Please check your email to verify your account.
               </p>
+              <p className="text-zinc-400 text-sm mt-2 italic">
+                (If you don't see the email in your inbox, please check your <strong>Spam/Junk</strong> folder.)
+              </p>
               <p className="mt-8 text-sm text-zinc-400">
                 After verifying, you can{' '}
                 <Link to="/login" className="font-semibold text-[#31b8c6] hover:underline">
