@@ -1,0 +1,153 @@
+import userModel from "../models/user.model.js";
+import jwt from "jsonwebtoken";
+import redis from "../config/cache.js";
+
+
+/**
+ * @desc Register a new user
+ * @route POST /api/auth/register
+ * @access Public
+ * @body { username, email, password }
+ */
+export async function register(req, res) {
+
+    const { username, email, password } = req.body;
+
+    const isUserAlreadyExists = await userModel.findOne({
+        $or: [ { email }, { username } ]
+    })
+
+    if (isUserAlreadyExists) {
+        return res.status(400).json({
+            message: "User with this email or username already exists",
+            success: false,
+            err: "User already exists"
+        })
+    }
+
+    const user = await userModel.create({ username, email, password })
+
+    res.status(201).json({
+        message: "User registered successfully",
+        success: true,
+        user: {
+            id: user._id,
+            username: user.username,
+            email: user.email
+        }
+    });
+
+
+
+}
+
+/**
+ * @desc Login user and return JWT token
+ * @route POST /api/auth/login
+ * @access Public
+ * @body { email, password }
+ */
+export async function login(req, res) {
+    const { email, password } = req.body;
+
+    const user = await userModel.findOne({ email })
+
+    if (!user) {
+        return res.status(400).json({
+            message: "Invalid email or password",
+            success: false,
+            err: "User not found"
+        })
+    }
+
+    const isPasswordMatch = await user.comparePassword(password);
+
+    if (!isPasswordMatch) {
+        return res.status(400).json({
+            message: "Invalid email or password",
+            success: false,
+            err: "Incorrect password"
+        })
+    }
+
+    const token = jwt.sign({
+        id: user._id,
+        username: user.username,
+    }, process.env.JWT_SECRET, { expiresIn: '7d' })
+
+    res.cookie("token", token)
+
+    res.status(200).json({
+        message: "Login successful",
+        success: true,
+        user: {
+            id: user._id,
+            username: user.username,
+            email: user.email
+        }
+    })
+
+}
+
+
+/**
+ * @desc Get current logged in user's details
+ * @route GET /api/auth/get-me
+ * @access Private
+ */
+export async function getMe(req, res) {
+    const userId = req.user.id;
+
+    const user = await userModel.findById(userId).select("-password");
+
+    if (!user) {
+        return res.status(404).json({
+            message: "User not found",
+            success: false,
+            err: "User not found"
+        })
+    }
+
+    res.status(200).json({
+        message: "User details fetched successfully",
+        success: true,
+        user
+    })
+}
+
+
+/**
+ * @desc Logout user, clear cookie and blacklist token in Redis with dynamic TTL
+ * @route POST /api/auth/logout
+ * @access Public
+ */
+export async function logout(req, res) {
+    const token = req.cookies.token; 
+    
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    });
+
+    if (token) {
+        try {
+            const decoded = jwt.decode(token);
+            if (decoded && decoded.exp) {
+                const nowSeconds = Math.floor(Date.now() / 1000);
+                const remainingTTL = decoded.exp - nowSeconds;
+
+                if (remainingTTL > 0) {
+                    await redis.set(token, Date.now().toString(), "EX", remainingTTL);
+                    console.log(`[Blacklist] Token blacklisted in Upstash Redis for ${remainingTTL}s`);
+                }
+            }
+        } catch (err) {
+            console.error("Token decoding failed during logout:", err.message);
+        }
+    }
+
+    return res.status(200).json({
+        "user": "user logout successfully by shri ji"
+    });
+}

@@ -1,12 +1,13 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { ChatMistralAI } from "@langchain/mistralai"
 import { HumanMessage, SystemMessage, AIMessage, tool, createAgent } from "langchain";
 import * as z from "zod";
 import { searchInternet } from "./internet.service.js";
 
-const geminiModel = new ChatGoogleGenerativeAI({
-    model: "gemini-flash-latest",
-    apiKey: process.env.GEMINI_API_KEY
+const geminiModel = new ChatGroq({
+    model: "llama-3.3-70b-versatile",
+    apiKey: process.env.GROQ_API_KEY,
+    temperature: 0.2
 });
 
 const mistralModel = new ChatMistralAI({
@@ -26,7 +27,7 @@ const searchInternetTool = tool(
 )
 
 const agent = createAgent({
-    model: geminiModel,
+    model: "groq:llama-3.3-70b-versatile",
     tools: [searchInternetTool],
 })
 
@@ -71,5 +72,51 @@ export async function generateChatTitle(message) {
 
     return response.text;
 
+}
+
+export async function generateResponseStream(messages, onChunk) {
+    const systemMsg = new SystemMessage(`
+        You are a helpful and precise assistant for answering questions.
+        Current Date and Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+        
+        CRITICAL INSTRUCTIONS:
+        1. If the user asks for the current date or time, provide it using the Current Date and Time provided above.
+        2. For any question related to current events, latest news, sports schedules, or recent information, you MUST use the "searchInternet" tool to get the latest information from the internet and then answer based on the search results.
+        3. Always formulate internet search queries based on the current date provided above.
+    `);
+
+    const formattedMessages = messages.map(msg => {
+        if (msg.role == "user") {
+            return new HumanMessage(msg.content);
+        } else if (msg.role == "ai") {
+            return new AIMessage(msg.content);
+        }
+    });
+
+    const eventStream = await agent.streamEvents({
+        messages: [systemMsg, ...formattedMessages]
+    }, { version: "v2" });
+
+    let fullText = "";
+    for await (const event of eventStream) {
+        if (event.event === "on_chat_model_stream") {
+            const chunkObj = event.data?.chunk;
+            let content = "";
+            if (chunkObj) {
+                if (typeof chunkObj.content === "string") {
+                    content = chunkObj.content;
+                } else if (Array.isArray(chunkObj.content)) {
+                    content = chunkObj.content.map(c => typeof c === "string" ? c : (c.text || "")).join("");
+                } else if (chunkObj.text) {
+                    content = chunkObj.text;
+                }
+            }
+            if (content) {
+                fullText += content;
+                onChunk(content);
+            }
+        }
+    }
+    return fullText;
 }
 

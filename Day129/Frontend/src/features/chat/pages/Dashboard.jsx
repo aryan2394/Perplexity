@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useSelector } from 'react-redux'
 import { useChat } from '../hooks/useChat'
@@ -13,11 +13,30 @@ const Dashboard = () => {
   const [ chatInput, setChatInput ] = useState('')
   const chats = useSelector((state) => state.chat.chats)
   const currentChatId = useSelector((state) => state.chat.currentChatId)
+  const isLoading = useSelector((state) => state.chat.isLoading)
+  const error = useSelector((state) => state.chat.error)
+
+  const messagesEndRef = useRef(null)
+  const containerRef = useRef(null)
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
 
   useEffect(() => {
     chat.initializeSocketConnection()
     chat.handleGetChats()
   }, [])
+
+  useEffect(() => {
+    if (shouldAutoScroll && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [chats, currentChatId, shouldAutoScroll])
+
+  const handleScroll = () => {
+    if (!containerRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100
+    setShouldAutoScroll(isAtBottom)
+  }
 
   const handleSubmitMessage = (event) => {
     event.preventDefault()
@@ -96,47 +115,67 @@ const Dashboard = () => {
 
         <section className='relative max-w-3/5 mx-auto flex h-full min-w-0 flex-1 flex-col gap-4'>
 
-          <div className='messages flex-1 space-y-3 overflow-y-auto pr-1 pb-30'>
-            {chats[ currentChatId ]?.messages.map((message) => (
-              <div
-                key={message.id}
-                className={`max-w-[82%] w-fit rounded-2xl px-4 py-3 text-sm md:text-base ${message.role === 'user'
-                    ? 'ml-auto rounded-br-none bg-white/12 text-white'
-                    : 'mr-auto border-none text-white/90'
-                  }`}
-              >
-                {message.role === 'user' ? (
-                  <p>{message.content}</p>
-                ) : (
-                  <ReactMarkdown
-                    components={{
-                      p: ({ children }) => <p className='mb-2 last:mb-0'>{children}</p>,
-                      ul: ({ children }) => <ul className='mb-2 list-disc pl-5'>{children}</ul>,
-                      ol: ({ children }) => <ol className='mb-2 list-decimal pl-5'>{children}</ol>,
-                      code: ({ children }) => <code className='rounded bg-white/10 px-1 py-0.5'>{children}</code>,
-                      pre: ({ children }) => <pre className='mb-2 overflow-x-auto rounded-xl bg-black/30 p-3'>{children}</pre>
-                    }}
-                    remarkPlugins={[remarkGfm]}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
-                )}
-              </div>
-            ))}
+          <div 
+            ref={containerRef}
+            onScroll={handleScroll}
+            className='messages flex-1 space-y-3 overflow-y-auto pr-1 pb-30'
+          >
+            {chats[ currentChatId ]?.messages.map((message, index) => {
+              const isLastMessage = index === chats[ currentChatId ].messages.length - 1
+              return (
+                <div
+                  key={message.id || index}
+                  className={`max-w-[82%] w-fit rounded-2xl px-4 py-3 text-sm md:text-base ${message.role === 'user'
+                      ? 'ml-auto rounded-br-none bg-white/12 text-white'
+                      : 'mr-auto border-none text-white/90'
+                    }`}
+                >
+                  {message.role === 'user' ? (
+                    <p>{message.content}</p>
+                  ) : (
+                    <div className="relative">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className='mb-2 last:mb-0'>{children}</p>,
+                          ul: ({ children }) => <ul className='mb-2 list-disc pl-5'>{children}</ul>,
+                          ol: ({ children }) => <ol className='mb-2 list-decimal pl-5'>{children}</ol>,
+                          code: ({ children }) => <code className='rounded bg-white/10 px-1 py-0.5'>{children}</code>,
+                          pre: ({ children }) => <pre className='mb-2 overflow-x-auto rounded-xl bg-black/30 p-3'>{children}</pre>
+                        }}
+                        remarkPlugins={[remarkGfm]}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                      {isLastMessage && isLoading && (
+                        <span className="inline-block w-2.5 h-4 bg-[#31b8c6] animate-pulse ml-1 align-middle">▋</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            <div ref={messagesEndRef} />
           </div>
+
+          {error && (
+            <div className='mx-1 mb-2 rounded-2xl border border-red-500/30 bg-red-500/10 p-3.5 text-sm text-red-200'>
+              <strong>Error:</strong> {error}
+            </div>
+          )}
 
           <footer className='rounded-3xl w-full absolute bottom-2 border border-white/60 bg-[#080b12] p-4 md:p-5'>
             <form onSubmit={handleSubmitMessage} className='flex flex-col gap-3 md:flex-row'>
               <input
                 type='text'
                 value={chatInput}
+                disabled={isLoading}
                 onChange={(event) => setChatInput(event.target.value)}
-                placeholder='Type your message...'
-                className='w-full rounded-2xl border border-white/50 bg-transparent px-4 py-3 text-lg text-white outline-none transition placeholder:text-white/45 focus:border-white/90'
+                placeholder={isLoading ? 'Generating response...' : 'Type your message...'}
+                className='w-full rounded-2xl border border-white/50 bg-transparent px-4 py-3 text-lg text-white outline-none transition placeholder:text-white/45 focus:border-white/90 disabled:opacity-50 disabled:cursor-not-allowed'
               />
               <button
                 type='submit'
-                disabled={!chatInput.trim()}
+                disabled={isLoading || !chatInput.trim()}
                 className='rounded-2xl border border-white/60 px-6 py-3 text-lg font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50'
               >
                 Send

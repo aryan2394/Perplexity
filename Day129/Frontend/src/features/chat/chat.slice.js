@@ -27,6 +27,16 @@ const chatSlice = createSlice({
             const { chatId, messages } = action.payload
             state.chats[ chatId ].messages.push(...messages)
         },
+        appendMessageChunk: (state, action) => {
+            const { chatId, chunk } = action.payload
+            const messages = state.chats[ chatId ]?.messages
+            if (messages && messages.length > 0) {
+                const lastMsg = messages[ messages.length - 1 ]
+                if (lastMsg.role === 'ai') {
+                    lastMsg.content += chunk
+                }
+            }
+        },
         setChats: (state, action) => {
             state.chats = action.payload
         },
@@ -42,7 +52,7 @@ const chatSlice = createSlice({
     }
 })
 
-export const { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages } = chatSlice.actions
+export const { setChats, setCurrentChatId, setLoading, setError, createNewChat, addNewMessage, addMessages, appendMessageChunk } = chatSlice.actions
 export default chatSlice.reducer
 
 
