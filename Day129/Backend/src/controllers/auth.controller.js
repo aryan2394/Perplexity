@@ -26,26 +26,22 @@ export async function register(req, res) {
         })
     }
 
-    const user = await userModel.create({ username, email, password })
+    const user = await userModel.create({ username, email, password, verified: true })
 
-    const emailVerificationToken = jwt.sign({
-        email: user.email,
-    }, process.env.JWT_SECRET)
-
-    const baseUrl = process.env.CLIENT_URL || "http://localhost:5173";
-
-    await sendEmail({
-        to: email,
-        subject: "Welcome to Perplexity!",
-        html: `
-                <p>Hi ${username},</p>
-                <p>Thank you for registering at <strong>Perplexity</strong>. We're excited to have you on board!</p>
-                <p>Please verify your email address by clicking the link below:</p>
-                <a href="${baseUrl}/verify-email?token=${emailVerificationToken}">Verify Email</a>
-                <p>If you did not create an account, please ignore this email.</p>
-                <p>Best regards,<br>The Perplexity Team</p>
-        `
-    })
+    try {
+        await sendEmail({
+            to: email,
+            subject: "Welcome to Perplexity!",
+            html: `
+                    <p>Hi ${username},</p>
+                    <p>Thank you for registering at <strong>Perplexity</strong>. We're excited to have you on board!</p>
+                    <p>Your account has been automatically verified. You can log in and start using the application immediately.</p>
+                    <p>Best regards,<br>The Perplexity Team</p>
+            `
+        })
+    } catch (err) {
+        console.warn("[SMTP SKIP] Welcome email delivery failed (likely blocked by network ports):", err.message);
+    }
 
     res.status(201).json({
         message: "User registered successfully",
