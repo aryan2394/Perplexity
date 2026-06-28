@@ -23,6 +23,11 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api/auth", authRouter);
 app.use("/api/chats", chatRouter);
 
+// Health check endpoint for UptimeRobot (prevents Render sleep)
+app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "OK", timestamp: new Date() });
+});
+
 // Fallback for React Router client-side routing
 app.get("/*splat", (req, res) => {
     res.sendFile(path.join(__dirname, "../public/index.html"));
