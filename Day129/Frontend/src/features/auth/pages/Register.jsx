@@ -38,17 +38,14 @@ const Register = () => {
                 Registration Successful!
               </h1>
               <p className="text-zinc-200 text-lg">
-                Please check your email to verify your account.
-              </p>
-              <p className="text-zinc-400 text-sm mt-2 italic">
-                (If you don't see the email in your inbox, please check your <strong>Spam/Junk</strong> folder.)
+                Your account has been created successfully.
               </p>
               <p className="mt-8 text-sm text-zinc-400">
-                After verifying, you can{' '}
+                You can now{' '}
                 <Link to="/login" className="font-semibold text-[#31b8c6] hover:underline">
                   Login
                 </Link>
-                .
+                {' '}to your account.
               </p>
             </div>
           ) : (
