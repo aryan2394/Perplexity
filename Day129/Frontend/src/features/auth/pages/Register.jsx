@@ -19,7 +19,10 @@ const Register = () => {
       await register({ username, email, password })
       setIsSubmitted(true)
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.')
+      const errorMsg = err.response?.data?.errors
+        ? err.response.data.errors.map(e => e.msg).join('. ')
+        : (err.response?.data?.message || 'Registration failed. Please try again.')
+      setError(errorMsg)
     } finally {
       setIsLoading(false)
     }
